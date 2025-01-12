@@ -48,7 +48,7 @@ static void led0_task(void *p1, void *p2, void *p3)
     {
         for (i = 0; i < nbIter; i++)
         {
-            update_leds(0, 0);
+            update_leds(1, 0);
         }
         update_leds(0, 0);
         k_msleep(1000);

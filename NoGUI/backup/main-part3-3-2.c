@@ -17,7 +17,7 @@ LOG_MODULE_REGISTER(app);
 #define STACKSIZE (4096)
 static K_THREAD_STACK_DEFINE(led0_stack, STACKSIZE);
 static K_THREAD_STACK_DEFINE(led1_stack, STACKSIZE);
-static K_THREAD_STACK_DEFINE(sw0_stack, STACKSIZE);
+static K_THREAD_STACK_DEFINE(led2_stack, STACKSIZE);
 
 /* The devicetree node identifier for the "led0" alias. */
 #define LED0_NODE DT_ALIAS(led0)
@@ -48,7 +48,7 @@ static void led0_task(void *p1, void *p2, void *p3)
     {
         for (i = 0; i < nbIter; i++)
         {
-            update_leds(0, 0);
+            update_leds(1, 0);
         }
         update_leds(0, 0);
         k_msleep(1000);
@@ -69,30 +69,17 @@ static void led1_task(void *p1, void *p2, void *p3)
     }
 }
 
-static void sw0_task(void *p1, void *p2, void *p3)
+static void led2_task(void *p1, void *p2, void *p3)
 {
-    int i, nbIter = 500000;
+    int i, nbIter = 200000;
     while (1)
     {
-        if (switchPushed == 1)
+        for (i = 0; i < nbIter; i++)
         {
-            switchPushed = 0;
-            for (i = 0; i < nbIter; i++)
-            {
-                update_leds(1, 1);
-            }
-            update_leds(0, 0);
+            update_leds(1, 1);
         }
-        k_yield();
-    }
-}
-
-void sw0_pressed_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
-{
-    LOG_INF("Switch pressed at %d" PRIu32 "\n", k_cycle_get_32());
-    if ((pins & (1 << sw0.pin)) != 0)
-    {
-        switchPushed = 1;
+        update_leds(0, 0);
+        k_msleep(2000);
     }
 }
 
@@ -113,45 +100,14 @@ uint8_t init_leds()
     return returned;
 }
 
-uint8_t init_switches()
-{
-    uint8_t returned = 0;
-
-    if (!device_is_ready(sw0.port))
-    {
-        LOG_ERR("Error: Switch device %s is not ready.", sw0.port->name);
-        returned = -1;
-    }
-
-    if (!returned && gpio_pin_configure_dt(&sw0, GPIO_INPUT) != 0)
-    {
-        LOG_ERR("Error: failed to configure switch %s pin %d.", sw0.port->name, sw0.pin);
-        returned = -2;
-    }
-
-    if (!returned && gpio_pin_interrupt_configure_dt(&sw0, GPIO_INT_EDGE_TO_ACTIVE) != 0)
-    {
-        LOG_ERR("Error: failed to configure interrupt on %s pin %d.", sw0.port->name, sw0.pin);
-        returned = -3;
-    }
-
-    if (!returned)
-    {
-        gpio_init_callback(&sw0_cb_data, sw0_pressed_callback, BIT(sw0.pin));
-        gpio_add_callback(sw0.port, &sw0_cb_data);
-    }
-
-    LOG_INF("Set up switch at %s pin %d", sw0.port->name, sw0.pin);
-    return returned;
-}
 
 void main(void)
 {
 
-    struct k_thread led0_t, led1_t, sw0_t;
-    if (init_leds() < 0 || init_switches() < 0)
+    struct k_thread led0_t, led1_t, led2_t;
+    if (init_leds() < 0 )
     {
-        LOG_ERR("Error: %s", "LED or Switch init failed");
+        LOG_ERR("Error: %s", "LED init failed");
         return;
     }
 
@@ -161,7 +117,7 @@ void main(void)
     k_thread_create(&led1_t, led1_stack, K_THREAD_STACK_SIZEOF(led1_stack),
                     led1_task, NULL, NULL, NULL,
                     2, 0, K_NO_WAIT);
-    k_thread_create(&sw0_t, sw0_stack, K_THREAD_STACK_SIZEOF(sw0_stack),
-                    sw0_task, NULL, NULL, NULL,
+    k_thread_create(&led2_t, led2_stack, K_THREAD_STACK_SIZEOF(led2_stack),
+                    led2_task, NULL, NULL, NULL,
                     3, 0, K_NO_WAIT);
 }

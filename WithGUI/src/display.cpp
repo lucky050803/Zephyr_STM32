@@ -155,7 +155,7 @@ void myDisplay::chart_add_humidity(long value)
 
 void myDisplay::text_add(char *text_to_add)
 {
-    if (strlen(text_value) > TEXT_MAX_SIZE - strlen(text_to_add) - 2 || text_nb > text_nb_max)
+    if (strlen(text_value) > TEXT_MAX_SIZE - strlen(text_to_add) - 4 || text_nb > text_nb_max)
     {
         text_clear();
     }
