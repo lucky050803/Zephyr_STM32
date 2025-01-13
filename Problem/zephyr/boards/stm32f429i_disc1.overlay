@@ -1,0 +1,18 @@
+
+/ {
+    aliases {
+        led0 = &green_led_3;
+        led1 = &red_led_4;
+    };
+
+    chosen {
+        perso,bme680 = &bme680;
+    };
+};
+
+&i2c3 {
+    bme680: bme680@77 {
+        compatible = "bosch,bme680";
+        reg = <0x77>;
+    };
+};

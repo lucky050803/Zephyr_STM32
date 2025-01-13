@@ -32,10 +32,11 @@ typedef struct task_t
 #define STACKSIZE (1024)
 static K_THREAD_STACK_DEFINE(thread0_stack, STACKSIZE);
 static K_THREAD_STACK_DEFINE(thread1_stack, STACKSIZE);
-
+static K_THREAD_STACK_DEFINE(thread2_stack, STACKSIZE);
 task tasks[] = {
-	{.name = "T1", .thread_stack = thread0_stack, .start = 0000, .period = 1000, .cpu = 400, .priority = 1, .led0 = 1, .led1 = 0},	// Bleu
-	{.name = "T2", .thread_stack = thread1_stack, .start = 1000, .period = 3000, .cpu = 700, .priority = 2, .led0 = 0, .led1 = 1}}; // Jaune
+	{.name = "T1", .thread_stack = thread0_stack, .start = 1000, .period = 10000, .cpu = 200, .priority = 2, .led0 = 1, .led1 = 0},	// Bleu
+	{.name = "T2", .thread_stack = thread1_stack, .start = 0000, .period = 6000, .cpu = 100, .priority = 1, .led0 = 0, .led1 = 1},
+	{.name = "T3", .thread_stack = thread2_stack, .start = 2000, .period = 15000, .cpu = 800, .priority = 3, .led0 = 1, .led1 = 1}}; // Jaune
 
 /* The devicetree node identifier for the "led0" alias. */
 #define LED0_NODE DT_ALIAS(led0)
