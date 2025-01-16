@@ -22,20 +22,16 @@ static K_THREAD_STACK_DEFINE(display_stack, STACKSIZE);
 static K_THREAD_STACK_DEFINE(bme680_stack, STACKSIZE);
 static K_THREAD_STACK_DEFINE(adc_stack, STACKSIZE);
 static K_THREAD_STACK_DEFINE(led_stack, STACKSIZE);
-
 #define PRIO_DISPLAY_TASK 1
 #define PRIO_BME680_TASK 2
 #define PRIO_ABC_TASK 3
 #define PRIO_LED_TASK 4
 #define PERIOD_DISPLAY_TASK 2000
 #define PERIOD_BME680_TASK 500
-#define PERIOD_LED_TASK 500
 
 const struct device *bme680_dev = DEVICE_DT_GET(DT_CHOSEN(perso_bme680)); // OR DT_ALIAS(bme680)
 const struct device *display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
-
-const int THRESHHOLD = 200;
-
+const int THRESHHOLD = 2;
 myDisplay display;
 myBME680 bme680;
 myADC adc;
@@ -57,11 +53,11 @@ static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
 #define TASK_START()                \
     k_timer_status_sync(&timer);    \
-    LOG_INF("START task %s", name); \
+    LOG_DBG("START task %s", name); \
     start = k_uptime_get_32();
 
 #define TASK_END() \
-    LOG_INF("END task %s - %dms", name, k_uptime_get_32() - start);
+    LOG_DBG("END task %s - %dms", name, k_uptime_get_32() - start);
 
 static void bme680_task(void *p1, void *p2, void *p3)
 {
@@ -69,13 +65,14 @@ static void bme680_task(void *p1, void *p2, void *p3)
 
     while (1)
     {
-        
         TASK_START()
 
         bme680.update_values();
+        LOG_INF("Temperature: %d.%06d °C, Humidity: %d.%06d %%",
+                bme680.temperature.val1, bme680.temperature.val2 / 10000,
+                bme680.humidity.val1, bme680.humidity.val2 / 10000);
 
         TASK_END()
-      
     }
 }
 
@@ -85,15 +82,12 @@ static void adc_task(void *p1, void *p2, void *p3)
 
     while (1)
     {
-        
         TASK_START()
 
         adc.update_value();
-        
-        TASK_END()
-      
-    }
 
+        TASK_END()
+    }
 }
 
 void update_leds(uint8_t led0_val)
@@ -122,39 +116,14 @@ uint8_t init_leds()
     return returned;
 }
 
-static void led_task(void *p1, void *p2, void *p3)
-{
-   
-    TASK_PREPARE(PERIOD_LED_TASK);
-    int i, nbIter = 10000;
-    while(1)
-    {
-     
-        TASK_START();
-        if (adc.get_value() > THRESHHOLD)
-        {
-
-            for (i = 0; i < nbIter; i++)
-            {
-                update_leds(1);
-            }
-            update_leds(0);
-        }
-        
-        TASK_END();
-    
-    }
-        
-}
-
 static void display_task(void *p1, void *p2, void *p3)
 {
     TASK_PREPARE(PERIOD_DISPLAY_TASK);
     char text[50] = {0};
+    int i, nbIter = 100;
 
     while (1)
     {
-        
         TASK_START();
 
         display.task_handler();
@@ -163,12 +132,19 @@ static void display_task(void *p1, void *p2, void *p3)
 
         sprintf(text, "%d.%02d - %d.%02d", bme680.temperature.val1, bme680.temperature.val2 / 10000, bme680.humidity.val1, bme680.humidity.val2 / 10000);
         display.text_add(text);
+        if (adc.get_value() > (int32_t)THRESHHOLD)
+        {
 
+            for (i = 0; i < nbIter; i++)
+            {
+                update_leds(1);
+            }
+            update_leds(0);
+        }
         sprintf(text, "%d", adc.get_value());
         display.text_add(text);
 
         TASK_END();
-      
     }
 }
 
@@ -180,9 +156,6 @@ int main(void)
     k_tid_t bme680_tid;
     struct k_thread adc_t;
     k_tid_t adc_tid;
-
-    struct k_thread led_t;
-    k_tid_t led_tid;
     display.init(display_dev, true);
     bme680.init(bme680_dev);
     adc.init();
@@ -206,9 +179,4 @@ int main(void)
                               adc_task, NULL, NULL, NULL,
                               PRIO_ABC_TASK, 0, K_NO_WAIT);
     k_thread_name_set(adc_tid, "adc");
-
-    led_tid = k_thread_create(&led_t, led_stack, K_THREAD_STACK_SIZEOF(led_stack),
-                              led_task, NULL, NULL, NULL,
-                              PRIO_LED_TASK, 0, K_NO_WAIT);
-    k_thread_name_set(led_tid, "led");
 }
